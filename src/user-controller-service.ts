@@ -11,6 +11,7 @@ import { wsClients } from "./storage/ws-clients.js";
 import WebSocket from "ws";
 import { AddShipsDtoModel } from "./models/add-ships-dto.model.js";
 import { AttackDtoModel } from "./models/attack-dto.model.js";
+import { parseShipsToCells } from "./utils/parse-ships-to-cells.js";
 
 class UserControllerService {
   public async registerUser(ws: WebSocket, dataMessage: WsRawDataModel<User>): Promise<WsRawDataModel<UserResponse>> {
@@ -81,7 +82,7 @@ class UserControllerService {
     const userId = wsClients.get(ws)!;
     const game = games.find((game) => game.idGame === data.gameId);
     if (game) {
-      game.players.find((player) => player.idPlayer === userId)!.ships = data.ships;
+      game.players.find((player) => player.idPlayer === userId)!.ships = parseShipsToCells(data.ships);
     }
     return data.gameId;
   }
@@ -91,7 +92,6 @@ class UserControllerService {
     const game = games.find((game) => game.idGame === gameId);
     if (game) {
       const enemyShips = game.players.find((player) => player.idPlayer !== indexPlayer)!.ships;
-      const attackPosition = enemyShips.find(({position}) => position.x === x && position.y === y);
     }
   }
 }

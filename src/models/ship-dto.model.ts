@@ -1,7 +1,6 @@
 import { ShipType } from "./ship-type.js";
-import { ShipStatusType } from "./ship-status-type.js";
 
-export interface ShipModel {
+export interface ShipDtoModel {
   position: {
     x: number,
     y: number,
@@ -9,5 +8,4 @@ export interface ShipModel {
   direction: boolean,
   length: number,
   type: ShipType,
-  status?: ShipStatusType,
 }

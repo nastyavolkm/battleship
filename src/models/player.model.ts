@@ -1,7 +1,7 @@
-import { ShipModel } from "./ship-model.js";
+import { ShipCellModel } from "./ship-cell-model";
 
 export interface PlayerModel {
   idPlayer: number,
   isWinner: boolean,
-  ships: ShipModel[],
+  ships: ShipCellModel[],
 }

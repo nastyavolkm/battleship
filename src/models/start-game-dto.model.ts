@@ -1,6 +1,6 @@
-import { ShipModel } from "./ship-model.js";
+import { ShipDtoModel } from "./ship-dto.model.js";
 
 export interface StartGameDtoModel {
-  ships: ShipModel[],
+  ships: ShipDtoModel[],
   currentPlayerIndex: number,
 }
