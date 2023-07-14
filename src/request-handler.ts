@@ -8,6 +8,8 @@ import { stringifyResponse } from "./utils/stringify-response.js";
 import { updateRoomsState } from "./handlers/update-rooms-state.js";
 import { AddShipsDtoModel } from "./models/add-ships-dto.model.js";
 import { startGame } from "./handlers/start-game.js";
+import { AttackDtoModel } from "./models/attack-dto.model.js";
+import { sendTurn } from "./handlers/send-turn.js";
 
 export const requestHandler = async (ws: WebSocket, dataMessage: Buffer) => {
   try {
@@ -33,8 +35,14 @@ export const requestHandler = async (ws: WebSocket, dataMessage: Buffer) => {
         createGameForUsers(result);
         break;
       case MessageType.ADD_SHIPS:
-        await userControllerService.addShips(ws, parsedData as WsRawDataModel<AddShipsDtoModel>);
-        startGame();
+        const gameId = await userControllerService.addShips(ws, parsedData as WsRawDataModel<AddShipsDtoModel>);
+        const isStarted = await startGame(gameId);
+        if (isStarted) {
+          await sendTurn(gameId);
+        }
+        break;
+      case MessageType.ATTACK:
+        await userControllerService.attack(ws, parsedData as WsRawDataModel<AttackDtoModel>);
         break;
       default: throw new Error ('Bad request');
     }

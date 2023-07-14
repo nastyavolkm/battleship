@@ -2,8 +2,8 @@ import { wsClients } from "../storage/ws-clients.js";
 import { games } from "../storage/games.js";
 import { MessageType } from "../models/message-type.enum.js";
 
-export const startGame = () => {
-  const game = games.find((game) => game.state === 'waiting');
+export const startGame = async (gameId: number): Promise<boolean> => {
+  const game = games.find((game) => game.idGame === gameId);
   if (game) {
     if (game.players.every((player) => player.ships.length > 0)) {
       game.state = 'inProgress';
@@ -20,7 +20,8 @@ export const startGame = () => {
           ws.send(response);
         }
       });
+      return true;
     }
   }
-
+  return false;
 };
