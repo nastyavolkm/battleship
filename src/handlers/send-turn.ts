@@ -2,19 +2,22 @@ import { wsClients } from "../storage/ws-clients.js";
 import { games } from "../storage/games.js";
 import { MessageType } from "../models/message-type.enum.js";
 
-export const sendTurn = async (gameId: number) => {
+export let currentPlayerIndex: number = 0;
+
+export const sendTurn = async (gameId: number, playerIdForTurn: number) => {
   const game = games.find((game) => game.idGame === gameId);
   if (game) {
-    wsClients.forEach((id, ws) => {
-      if (game.players.some((player) => player.idPlayer === id)) {
-        ws.send(JSON.stringify({
-          type: MessageType.TURN,
-          id: 0,
-          data: JSON.stringify({
-            currentPlayerIndex: id,
-          }),
-        }));
-      }
+    game.players.forEach((player) => {
+      const ws = wsClients.get(player.idPlayer)!;
+      const response = JSON.stringify({
+        type: MessageType.TURN,
+        id: 0,
+        data: JSON.stringify({
+          currentPlayerIndex: playerIdForTurn,
+        }),
+      });
+      currentPlayerIndex = playerIdForTurn;
+      ws.send(response);
     });
   }
 };

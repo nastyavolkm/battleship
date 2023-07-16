@@ -1,17 +1,20 @@
 import { MessageType } from "./models/message-type.enum.js";
 import { userControllerService } from "./user-controller-service.js";
 import { WsRawDataModel } from "./models/ws-raw-data.model";
-import { User } from "./models/user";
-import WebSocket from "ws";
+import { User } from "./models/user.js";
 import { createGameForUsers } from "./handlers/create-game-for-users.js";
 import { stringifyResponse } from "./utils/stringify-response.js";
 import { updateRoomsState } from "./handlers/update-rooms-state.js";
 import { AddShipsDtoModel } from "./models/add-ships-dto.model.js";
 import { startGame } from "./handlers/start-game.js";
 import { AttackDtoModel } from "./models/attack-dto.model.js";
-import { sendTurn } from "./handlers/send-turn.js";
+import { currentPlayerIndex, sendTurn } from "./handlers/send-turn.js";
+import { getEnemyId } from "./utils/get-enemy-id.js";
+import { wsClients } from "./storage/ws-clients.js";
+import { attackHandler } from "./handlers/attack-handler.js";
 
-export const requestHandler = async (ws: WebSocket, dataMessage: Buffer) => {
+export const requestHandler = async (id: number, dataMessage: Buffer) => {
+  const ws = wsClients.get(id)!;
   try {
     let parsedData = JSON.parse(dataMessage.toString());
     if (parsedData.data) {
@@ -21,33 +24,49 @@ export const requestHandler = async (ws: WebSocket, dataMessage: Buffer) => {
     let result;
     switch (parsedData.type) {
       case MessageType.REG:
-        result = await userControllerService.registerUser(ws, parsedData as WsRawDataModel<User>);
+        result = await userControllerService.registerUser(id, parsedData as WsRawDataModel<User>);
         const userResponse = stringifyResponse(result);
         ws.send(userResponse);
         break;
       case MessageType.CREATE_ROOM:
-        result = await userControllerService.createRoom(ws, parsedData as WsRawDataModel<string>);
+        result = await userControllerService.createRoom(id, parsedData as WsRawDataModel<string>);
         const roomResponse = stringifyResponse(result);
         updateRoomsState(roomResponse);
         break;
       case MessageType.ADD_USER_TO_ROOM:
-        result = await userControllerService.addUserToRoom(ws, parsedData as WsRawDataModel<{ indexRoom: number }>);
+        result = await userControllerService.addUserToRoom(id, parsedData as WsRawDataModel<{ indexRoom: number }>);
         createGameForUsers(result);
         break;
       case MessageType.ADD_SHIPS:
-        const gameId = await userControllerService.addShips(ws, parsedData as WsRawDataModel<AddShipsDtoModel>);
-        const isStarted = await startGame(gameId);
+        const idGame = await userControllerService.addShips(id, parsedData as WsRawDataModel<AddShipsDtoModel>);
+        const isStarted = await startGame(idGame);
         if (isStarted) {
-          await sendTurn(gameId);
+          const enemyId = getEnemyId(idGame, parsedData.data.indexPlayer);
+          await sendTurn(idGame, enemyId);
         }
         break;
-      case MessageType.ATTACK:
-        await userControllerService.attack(ws, parsedData as WsRawDataModel<AttackDtoModel>);
+      case MessageType.RANDOM_ATTACK:
+        const randomAttack = {
+          ...parsedData.data,
+          x: Math.random() * 10,
+          y: Math.random() * 10
+        };
+        await attackHandler({
+          ...parsedData,
+          data: {
+            ...randomAttack
+          }
+        });
         break;
-      default: throw new Error ('Bad request');
+      case MessageType.ATTACK:
+        const { indexPlayer } = parsedData.data as AttackDtoModel;
+        if (indexPlayer !== currentPlayerIndex) return;
+        await attackHandler(parsedData as WsRawDataModel<AttackDtoModel>);
+        break;
+      default:
+        throw new Error("Bad request");
     }
-  }
-  catch(error) {
-    throw new Error('Bad request');
+  } catch (error) {
+    throw new Error("Bad request");
   }
 };

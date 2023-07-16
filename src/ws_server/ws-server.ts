@@ -9,11 +9,11 @@ let idNumber = 0;
 
 wss.on('connection', function connection(ws) {
   const id = idNumber++;
-  wsClients.set(ws, id);
+  wsClients.set(id, ws);
   ws.on('error', console.error);
 
   ws.on('message', async (buffer: Buffer) => {
-    await requestHandler(ws, buffer);
+    await requestHandler(id, buffer);
   });
 
 });
