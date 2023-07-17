@@ -1,5 +1,5 @@
 export enum ShotResultEnum {
   MISS = 'miss',
-  KILL = 'kill',
+  KILLED = 'killed',
   SHOT = 'shot',
 }

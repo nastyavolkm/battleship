@@ -1,6 +1,7 @@
 import { wsClients } from "../storage/ws-clients.js";
 import { games } from "../storage/games.js";
 import { MessageType } from "../models/message-type.enum.js";
+import { logResult } from "../utils/log-result.js";
 
 export const startGame = async (gameId: number): Promise<boolean> => {
   const game = games.find((game) => game.idGame === gameId);
@@ -12,10 +13,11 @@ export const startGame = async (gameId: number): Promise<boolean> => {
         type: MessageType.START_GAME,
         id: 0,
         data: JSON.stringify({
-          ships: player.ships,
-          currentPlayerIndex: player.idPlayer
+          ships: player.DTOShips,
+          currentPlayerIndex: player.idPlayer,
         })
       });
+      logResult(`Command: ${response} send`);
       ws.send(response);
     });
     return true;

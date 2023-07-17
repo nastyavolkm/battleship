@@ -12,6 +12,7 @@ import { currentPlayerIndex, sendTurn } from "./handlers/send-turn.js";
 import { getEnemyId } from "./utils/get-enemy-id.js";
 import { wsClients } from "./storage/ws-clients.js";
 import { attackHandler } from "./handlers/attack-handler.js";
+import { logResult } from "./utils/log-result.js";
 
 export const requestHandler = async (id: number, dataMessage: Buffer) => {
   const ws = wsClients.get(id)!;
@@ -22,20 +23,23 @@ export const requestHandler = async (id: number, dataMessage: Buffer) => {
       parsedData = { ...parsedData, data };
     }
     let result;
+    logResult(`Command: ${parsedData.type} received`);
     switch (parsedData.type) {
       case MessageType.REG:
         result = await userControllerService.registerUser(id, parsedData as WsRawDataModel<User>);
         const userResponse = stringifyResponse(result);
+        logResult(`Command: ${userResponse} send`);
         ws.send(userResponse);
+        await updateRoomsState();
         break;
       case MessageType.CREATE_ROOM:
-        result = await userControllerService.createRoom(id, parsedData as WsRawDataModel<string>);
-        const roomResponse = stringifyResponse(result);
-        updateRoomsState(roomResponse);
+        await userControllerService.createRoom(id);
+        await updateRoomsState();
         break;
       case MessageType.ADD_USER_TO_ROOM:
         result = await userControllerService.addUserToRoom(id, parsedData as WsRawDataModel<{ indexRoom: number }>);
-        createGameForUsers(result);
+        await updateRoomsState();
+        await createGameForUsers(result);
         break;
       case MessageType.ADD_SHIPS:
         const idGame = await userControllerService.addShips(id, parsedData as WsRawDataModel<AddShipsDtoModel>);

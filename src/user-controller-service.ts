@@ -12,39 +12,37 @@ import { AttackDtoModel } from "./models/attack-dto.model.js";
 import { parseShipsToCells } from "./utils/parse-ships-to-cells.js";
 import { ShotResultEnum } from "./models/shot-result.enum.js";
 import { FeedbackAttackDtoModel } from "./models/feedback-attack-dto.model.js";
+import { CellStatusEnum } from "./models/cell-status-enum.js";
 
 class UserControllerService {
   public async registerUser(userId: number, dataMessage: WsRawDataModel<User>): Promise<WsRawDataModel<UserResponse>> {
     const { type, data, id } = dataMessage;
     const responseData = { error: false, errorText: '' };
-    const isUserExists = users.find((item) => item.name === data.name && item.password === data.password);
-    if (!isUserExists) {
+    const isUserWithSuchNameExists = users.find((item) => item.name === data.name);
+    if (isUserWithSuchNameExists) {
+      const isWrongPassword = isUserWithSuchNameExists.password !== data.password;
+      if (isWrongPassword) {
+        responseData.error = true;
+        responseData.errorText = 'Wrong password!';
+      }
+    } else {
       users.push({...data, id: userId });
     }
     return {
       type,
-      id,
       data: {
         ...data,
         ...responseData
-      }
+      },
+      id,
     };
   }
 
-  public async createRoom(userId: number, dataMessage: WsRawDataModel<string>): Promise<WsRawDataModel<Room[]>> {
-    const { id } = dataMessage;
+  public async createRoom(userId: number): Promise<void> {
     const roomUser = users.find((item) => item.id === userId);
     if (roomUser) {
       const room: Room = { roomId: userId, roomUsers: [{ name: roomUser.name, index: userId }] };
       rooms.push(room);
-
-      return {
-        type: MessageType.UPDATE_ROOM,
-        id,
-        data: rooms.filter((room) => {
-          return room.roomUsers.length < 2;
-        }),
-      };
     } else {
       throw new Error('No such user exists');
     }
@@ -58,11 +56,13 @@ class UserControllerService {
           idPlayer: userId,
           isWinner: false,
           ships: [],
+          DTOShips: [],
         },
         {
-          idPlayer: users.filter((user) => user.id !== userId)[0].id,
+          idPlayer: rooms.find((room) => room.roomId === dataMessage.data.indexRoom)!.roomUsers[0]!.index,
           isWinner: false,
           ships: [],
+          DTOShips: [],
         },
       ],
       state: 'waiting',
@@ -71,14 +71,15 @@ class UserControllerService {
     const roomForCloseIndex = rooms.findIndex((item) => item.roomId === dataMessage.data.indexRoom);
     rooms.splice(roomForCloseIndex, 1);
     return newGame.idGame;
-
   }
 
   public async addShips(userId: number, dataMessage: WsRawDataModel<AddShipsDtoModel>): Promise<number> {
     const { data } = dataMessage;
     const game = games.find((game) => game.idGame === data.gameId);
     if (game) {
-      game.players.find((player) => player.idPlayer === userId)!.ships = parseShipsToCells(data.ships);
+      const player = game.players.find((player) => player.idPlayer === userId)!;
+      player.ships = parseShipsToCells(data.ships);
+      player.DTOShips = data.ships;
     }
     return data.gameId;
   }
@@ -92,16 +93,20 @@ class UserControllerService {
       const hitShip = enemyShips.find(({ positions }) => positions
         .some((position) => position.x === x && position.y === y));
       if (hitShip) {
-        const leftShipPositions = hitShip.positions.filter((position) => position.x !== x || position.y !== y);
-        hitShip.positions = leftShipPositions;
-        result = leftShipPositions.length === 0 ? ShotResultEnum.KILL : ShotResultEnum.SHOT;
+        hitShip.positions.forEach((position) => {
+          if (position.x === x && position.y === y) {
+            position.status = CellStatusEnum.KILLED;
+          }
+        });
+        result = hitShip.positions.some((position) => position.status === CellStatusEnum.FULL)
+          ? ShotResultEnum.SHOT
+          : ShotResultEnum.KILLED;
       } else {
         result = ShotResultEnum.MISS;
       }
 
       return {
         type: MessageType.ATTACK,
-        id,
         data: {
           position: {
             x,
@@ -110,6 +115,7 @@ class UserControllerService {
           currentPlayer: indexPlayer,
           status: result,
         },
+        id,
       };
     } else {
       throw new Error('No such game exists');
