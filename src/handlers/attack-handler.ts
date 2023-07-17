@@ -15,7 +15,7 @@ import { getKilledShipCells } from "../utils/get-killed-ship-cells.js";
 
 export const attackHandler = async (parsedData: WsRawDataModel<AttackDtoModel>) => {
   const { indexPlayer, gameId } = parsedData.data;
-  let result = await userControllerService.attack(parsedData as WsRawDataModel<AttackDtoModel>);
+  const result = await userControllerService.attack(parsedData as WsRawDataModel<AttackDtoModel>);
   const attackResponse = stringifyResponse(result);
   if (result.data.status === ShotResultEnum.KILLED) {
     const borderCellsResponse = getKilledShipBorderCellResponse(gameId, indexPlayer, result.data);

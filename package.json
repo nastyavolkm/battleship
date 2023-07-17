@@ -9,8 +9,7 @@
         "start:dev": "npx nodemon",
         "start:prod": "npx tsc && node build/index",
         "lint": "npx eslint ./src",
-        "format": "npx eslint ./src --fix",
-        "test": "echo \"Error: no test specified\" && exit 1"
+        "format": "npx eslint ./src --fix"
     },
     "author": "Andrei Auchynnikau",
     "keywords": [],

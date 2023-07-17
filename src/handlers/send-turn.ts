@@ -3,7 +3,7 @@ import { games } from "../storage/games.js";
 import { MessageType } from "../models/message-type.enum.js";
 import { logResult } from "../utils/log-result.js";
 
-export let currentPlayerIndex: number = 0;
+export let currentPlayerIndex = 0;
 
 export const sendTurn = async (gameId: number, playerIdForTurn: number) => {
   const game = games.find((game) => game.idGame === gameId);
